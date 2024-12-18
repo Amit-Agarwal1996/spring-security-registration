@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GoogleResponse.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">spring-security-login-and-registration</a> &gt; <a href="index.source.html" class="el_package">com.baeldung.captcha</a> &gt; <span class="el_source">GoogleResponse.java</span></div><h1>GoogleResponse.java</h1><pre class="source lang-java linenums">
+package com.baeldung.captcha;
+
+import com.fasterxml.jackson.annotation.*;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonPropertyOrder({ &quot;success&quot;, &quot;score&quot;, &quot;action&quot;,&quot;challenge_ts&quot;, &quot;hostname&quot;, &quot;error-codes&quot; })
+<span class="nc" id="L13">public class GoogleResponse {</span>
+
+    @JsonProperty(&quot;success&quot;)
+    private boolean success;
+    @JsonProperty(&quot;challenge_ts&quot;)
+    private String challengeTimeStamp;
+    @JsonProperty(&quot;hostname&quot;)
+    private String hostname;
+    @JsonProperty(&quot;score&quot;)
+    private float score;
+    @JsonProperty(&quot;action&quot;)
+    private String action;
+    @JsonProperty(&quot;error-codes&quot;)
+    private ErrorCode[] errorCodes;
+
+
+<span class="nc" id="L29">    enum ErrorCode {</span>
+<span class="nc" id="L30">        MissingSecret, InvalidSecret, MissingResponse, InvalidResponse, BadRequest, TimeoutOrDuplicate;</span>
+
+<span class="nc" id="L32">        private static Map&lt;String, ErrorCode&gt; errorsMap = new HashMap&lt;&gt;(6);</span>
+
+        static {
+<span class="nc" id="L35">            errorsMap.put(&quot;missing-input-secret&quot;, MissingSecret);</span>
+<span class="nc" id="L36">            errorsMap.put(&quot;invalid-input-secret&quot;, InvalidSecret);</span>
+<span class="nc" id="L37">            errorsMap.put(&quot;missing-input-response&quot;, MissingResponse);</span>
+<span class="nc" id="L38">            errorsMap.put(&quot;invalid-input-response&quot;, InvalidResponse);</span>
+<span class="nc" id="L39">            errorsMap.put(&quot;bad-request&quot;, BadRequest);</span>
+<span class="nc" id="L40">            errorsMap.put(&quot;timeout-or-duplicate&quot;, TimeoutOrDuplicate);</span>
+<span class="nc" id="L41">        }</span>
+
+        @JsonCreator
+        public static ErrorCode forValue(final String value) {
+<span class="nc" id="L45">            return errorsMap.get(value.toLowerCase());</span>
+        }
+    }
+
+    @JsonProperty(&quot;success&quot;)
+    public boolean isSuccess() {
+<span class="nc" id="L51">        return success;</span>
+    }
+
+    @JsonProperty(&quot;success&quot;)
+    public void setSuccess(boolean success) {
+<span class="nc" id="L56">        this.success = success;</span>
+<span class="nc" id="L57">    }</span>
+
+    @JsonProperty(&quot;challenge_ts&quot;)
+    public String getChallengeTimeStamp() {
+<span class="nc" id="L61">        return challengeTimeStamp;</span>
+    }
+
+    @JsonProperty(&quot;challenge_ts&quot;)
+    public void setChallengeTimeStamp(String challengeTimeStamp) {
+<span class="nc" id="L66">        this.challengeTimeStamp = challengeTimeStamp;</span>
+<span class="nc" id="L67">    }</span>
+
+    @JsonProperty(&quot;hostname&quot;)
+    public String getHostname() {
+<span class="nc" id="L71">        return hostname;</span>
+    }
+
+    @JsonProperty(&quot;hostname&quot;)
+    public void setHostname(String hostname) {
+<span class="nc" id="L76">        this.hostname = hostname;</span>
+<span class="nc" id="L77">    }</span>
+
+    @JsonProperty(&quot;error-codes&quot;)
+    public void setErrorCodes(ErrorCode[] errorCodes) {
+<span class="nc" id="L81">        this.errorCodes = errorCodes;</span>
+<span class="nc" id="L82">    }</span>
+
+    @JsonProperty(&quot;error-codes&quot;)
+    public ErrorCode[] getErrorCodes() {
+<span class="nc" id="L86">        return errorCodes;</span>
+    }
+
+    @JsonProperty(&quot;score&quot;)
+    public float getScore() {
+<span class="nc" id="L91">        return score;</span>
+    }
+
+    @JsonProperty(&quot;score&quot;)
+    public void setScore(float score) {
+<span class="nc" id="L96">        this.score = score;</span>
+<span class="nc" id="L97">    }</span>
+
+    @JsonProperty(&quot;action&quot;)
+    public String getAction() {
+<span class="nc" id="L101">        return action;</span>
+    }
+
+    @JsonProperty(&quot;action&quot;)
+    public void setAction(String action) {
+<span class="nc" id="L106">        this.action = action;</span>
+<span class="nc" id="L107">    }</span>
+
+    @JsonIgnore
+    public boolean hasClientError() {
+<span class="nc" id="L111">        final ErrorCode[] errors = getErrorCodes();</span>
+<span class="nc bnc" id="L112" title="All 2 branches missed.">        if (errors == null) {</span>
+<span class="nc" id="L113">            return false;</span>
+        }
+<span class="nc bnc" id="L115" title="All 2 branches missed.">        for (final ErrorCode error : errors) {</span>
+<span class="nc bnc" id="L116" title="All 2 branches missed.">            switch (error) {</span>
+            case InvalidResponse:
+            case MissingResponse:
+            case BadRequest:
+<span class="nc" id="L120">                return true;</span>
+            default:
+                break;
+            }
+        }
+<span class="nc" id="L125">        return false;</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="nc" id="L130">        return &quot;GoogleResponse{&quot; + &quot;success=&quot; + success + &quot;, challengeTs='&quot; + challengeTimeStamp + '\'' + &quot;, hostname='&quot; + hostname + '\''+ &quot;, score='&quot; + score + '\''+ &quot;, action='&quot; + action+ '\'' + &quot;, errorCodes=&quot; + Arrays.toString(errorCodes) + '}';</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>

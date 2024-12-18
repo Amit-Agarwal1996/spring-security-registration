@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">spring-security-login-and-registration</a> &gt; <a href="index.source.html" class="el_package">com.baeldung.service</a> &gt; <span class="el_source">UserService.java</span></div><h1>UserService.java</h1><pre class="source lang-java linenums">package com.baeldung.service;
+
+import java.io.UnsupportedEncodingException;
+import java.net.InetAddress;
+import java.net.URLEncoder;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import jakarta.transaction.Transactional;
+
+import com.baeldung.persistence.dao.NewLocationTokenRepository;
+import com.baeldung.persistence.dao.PasswordResetTokenRepository;
+import com.baeldung.persistence.dao.RoleRepository;
+import com.baeldung.persistence.dao.UserLocationRepository;
+import com.baeldung.persistence.dao.UserRepository;
+import com.baeldung.web.dto.UserDto;
+import com.baeldung.web.error.UserAlreadyExistException;
+import com.baeldung.persistence.dao.VerificationTokenRepository;
+import com.baeldung.persistence.model.NewLocationToken;
+import com.baeldung.persistence.model.PasswordResetToken;
+import com.baeldung.persistence.model.User;
+import com.baeldung.persistence.model.UserLocation;
+import com.baeldung.persistence.model.VerificationToken;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.env.Environment;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.session.SessionRegistry;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import com.maxmind.geoip2.DatabaseReader;
+
+@Service
+@Transactional
+<span class="nc" id="L42">public class UserService implements IUserService {</span>
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private VerificationTokenRepository tokenRepository;
+
+    @Autowired
+    private PasswordResetTokenRepository passwordTokenRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private RoleRepository roleRepository;
+
+    @Autowired
+    private SessionRegistry sessionRegistry;
+
+    @Autowired
+    @Qualifier(&quot;GeoIPCountry&quot;)
+    private DatabaseReader databaseReader;
+
+    @Autowired
+    private UserLocationRepository userLocationRepository;
+
+    @Autowired
+    private NewLocationTokenRepository newLocationTokenRepository;
+
+    @Autowired
+    private Environment env;
+
+    public static final String TOKEN_INVALID = &quot;invalidToken&quot;;
+    public static final String TOKEN_EXPIRED = &quot;expired&quot;;
+    public static final String TOKEN_VALID = &quot;valid&quot;;
+
+<span class="nc" id="L79">    public static String QR_PREFIX = &quot;https://chart.googleapis.com/chart?chs=200x200&amp;chld=M%%7C0&amp;cht=qr&amp;chl=&quot;;</span>
+<span class="nc" id="L80">    public static String APP_NAME = &quot;SpringRegistration&quot;;</span>
+
+    // API
+
+    @Override
+    public User registerNewUserAccount(final UserDto accountDto) {
+<span class="nc bnc" id="L86" title="All 2 branches missed.">        if (emailExists(accountDto.getEmail())) {</span>
+<span class="nc" id="L87">            throw new UserAlreadyExistException(&quot;There is an account with that email address: &quot; + accountDto.getEmail());</span>
+        }
+<span class="nc" id="L89">        final User user = new User();</span>
+
+<span class="nc" id="L91">        user.setFirstName(accountDto.getFirstName());</span>
+<span class="nc" id="L92">        user.setLastName(accountDto.getLastName());</span>
+<span class="nc" id="L93">        user.setPassword(passwordEncoder.encode(accountDto.getPassword()));</span>
+<span class="nc" id="L94">        user.setEmail(accountDto.getEmail());</span>
+<span class="nc" id="L95">        user.setUsing2FA(accountDto.isUsing2FA());</span>
+<span class="nc" id="L96">        user.setRoles(Collections.singletonList(roleRepository.findByName(&quot;ROLE_USER&quot;)));</span>
+<span class="nc" id="L97">        return userRepository.save(user);</span>
+    }
+
+    @Override
+    public User getUser(final String verificationToken) {
+<span class="nc" id="L102">        final VerificationToken token = tokenRepository.findByToken(verificationToken);</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">        if (token != null) {</span>
+<span class="nc" id="L104">            return token.getUser();</span>
+        }
+<span class="nc" id="L106">        return null;</span>
+    }
+
+    @Override
+    public VerificationToken getVerificationToken(final String VerificationToken) {
+<span class="nc" id="L111">        return tokenRepository.findByToken(VerificationToken);</span>
+    }
+
+    @Override
+    public void saveRegisteredUser(final User user) {
+<span class="nc" id="L116">        userRepository.save(user);</span>
+<span class="nc" id="L117">    }</span>
+
+    @Override
+    public void deleteUser(final User user) {
+<span class="nc" id="L121">        final VerificationToken verificationToken = tokenRepository.findByUser(user);</span>
+
+<span class="nc bnc" id="L123" title="All 2 branches missed.">        if (verificationToken != null) {</span>
+<span class="nc" id="L124">            tokenRepository.delete(verificationToken);</span>
+        }
+
+<span class="nc" id="L127">        final PasswordResetToken passwordToken = passwordTokenRepository.findByUser(user);</span>
+
+<span class="nc bnc" id="L129" title="All 2 branches missed.">        if (passwordToken != null) {</span>
+<span class="nc" id="L130">            passwordTokenRepository.delete(passwordToken);</span>
+        }
+
+<span class="nc" id="L133">        userRepository.delete(user);</span>
+<span class="nc" id="L134">    }</span>
+
+    @Override
+    public void createVerificationTokenForUser(final User user, final String token) {
+<span class="nc" id="L138">        final VerificationToken myToken = new VerificationToken(token, user);</span>
+<span class="nc" id="L139">        tokenRepository.save(myToken);</span>
+<span class="nc" id="L140">    }</span>
+
+    @Override
+    public VerificationToken generateNewVerificationToken(final String existingVerificationToken) {
+<span class="nc" id="L144">        VerificationToken vToken = tokenRepository.findByToken(existingVerificationToken);</span>
+<span class="nc" id="L145">        vToken.updateToken(UUID.randomUUID()</span>
+<span class="nc" id="L146">            .toString());</span>
+<span class="nc" id="L147">        vToken = tokenRepository.save(vToken);</span>
+<span class="nc" id="L148">        return vToken;</span>
+    }
+
+    @Override
+    public void createPasswordResetTokenForUser(final User user, final String token) {
+<span class="nc" id="L153">        final PasswordResetToken myToken = new PasswordResetToken(token, user);</span>
+<span class="nc" id="L154">        passwordTokenRepository.save(myToken);</span>
+<span class="nc" id="L155">    }</span>
+
+    @Override
+    public User findUserByEmail(final String email) {
+<span class="nc" id="L159">        return userRepository.findByEmail(email);</span>
+    }
+
+    @Override
+    public PasswordResetToken getPasswordResetToken(final String token) {
+<span class="nc" id="L164">        return passwordTokenRepository.findByToken(token);</span>
+    }
+
+    @Override
+    public Optional&lt;User&gt; getUserByPasswordResetToken(final String token) {
+<span class="nc" id="L169">        return Optional.ofNullable(passwordTokenRepository.findByToken(token) .getUser());</span>
+    }
+
+    @Override
+    public Optional&lt;User&gt; getUserByID(final long id) {
+<span class="nc" id="L174">        return userRepository.findById(id);</span>
+    }
+
+    @Override
+    public void changeUserPassword(final User user, final String password) {
+<span class="nc" id="L179">        user.setPassword(passwordEncoder.encode(password));</span>
+<span class="nc" id="L180">        userRepository.save(user);</span>
+<span class="nc" id="L181">    }</span>
+
+    @Override
+    public boolean checkIfValidOldPassword(final User user, final String oldPassword) {
+<span class="nc" id="L185">        return passwordEncoder.matches(oldPassword, user.getPassword());</span>
+    }
+
+    @Override
+    public String validateVerificationToken(String token) {
+<span class="nc" id="L190">        final VerificationToken verificationToken = tokenRepository.findByToken(token);</span>
+<span class="nc bnc" id="L191" title="All 2 branches missed.">        if (verificationToken == null) {</span>
+<span class="nc" id="L192">            return TOKEN_INVALID;</span>
+        }
+
+<span class="nc" id="L195">        final User user = verificationToken.getUser();</span>
+<span class="nc" id="L196">        final Calendar cal = Calendar.getInstance();</span>
+<span class="nc" id="L197">        if ((verificationToken.getExpiryDate()</span>
+<span class="nc" id="L198">            .getTime() - cal.getTime()</span>
+<span class="nc bnc" id="L199" title="All 2 branches missed.">            .getTime()) &lt;= 0) {</span>
+<span class="nc" id="L200">            tokenRepository.delete(verificationToken);</span>
+<span class="nc" id="L201">            return TOKEN_EXPIRED;</span>
+        }
+
+<span class="nc" id="L204">        user.setEnabled(true);</span>
+        // tokenRepository.delete(verificationToken);
+<span class="nc" id="L206">        userRepository.save(user);</span>
+<span class="nc" id="L207">        return TOKEN_VALID;</span>
+    }
+
+    @Override
+    public String generateQRUrl(User user) throws UnsupportedEncodingException {
+<span class="nc" id="L212">        return QR_PREFIX + URLEncoder.encode(String.format(&quot;otpauth://totp/%s:%s?secret=%s&amp;issuer=%s&quot;, APP_NAME, user.getEmail(), user.getSecret(), APP_NAME), &quot;UTF-8&quot;);</span>
+    }
+
+    @Override
+    public User updateUser2FA(boolean use2FA) {
+<span class="nc" id="L217">        final Authentication curAuth = SecurityContextHolder.getContext()</span>
+<span class="nc" id="L218">            .getAuthentication();</span>
+<span class="nc" id="L219">        User currentUser = (User) curAuth.getPrincipal();</span>
+<span class="nc" id="L220">        currentUser.setUsing2FA(use2FA);</span>
+<span class="nc" id="L221">        currentUser = userRepository.save(currentUser);</span>
+<span class="nc" id="L222">        final Authentication auth = new UsernamePasswordAuthenticationToken(currentUser, currentUser.getPassword(), curAuth.getAuthorities());</span>
+<span class="nc" id="L223">        SecurityContextHolder.getContext()</span>
+<span class="nc" id="L224">            .setAuthentication(auth);</span>
+<span class="nc" id="L225">        return currentUser;</span>
+    }
+
+    private boolean emailExists(final String email) {
+<span class="nc bnc" id="L229" title="All 2 branches missed.">        return userRepository.findByEmail(email) != null;</span>
+    }
+
+    @Override
+    public List&lt;String&gt; getUsersFromSessionRegistry() {
+<span class="nc" id="L234">        return sessionRegistry.getAllPrincipals()</span>
+<span class="nc" id="L235">            .stream()</span>
+<span class="nc" id="L236">            .filter((u) -&gt; !sessionRegistry.getAllSessions(u, false)</span>
+<span class="nc bnc" id="L237" title="All 2 branches missed.">                .isEmpty())</span>
+<span class="nc" id="L238">            .map(o -&gt; {</span>
+<span class="nc bnc" id="L239" title="All 2 branches missed.">                if (o instanceof User) {</span>
+<span class="nc" id="L240">                    return ((User) o).getEmail();</span>
+                } else {
+<span class="nc" id="L242">                    return o.toString()</span>
+            ;
+                }
+<span class="nc" id="L245">            }).collect(Collectors.toList());</span>
+    }
+
+    @Override
+    public NewLocationToken isNewLoginLocation(String username, String ip) {
+
+<span class="nc bnc" id="L251" title="All 2 branches missed.">        if(!isGeoIpLibEnabled()) {</span>
+<span class="nc" id="L252">            return null;</span>
+        }
+
+        try {
+<span class="nc" id="L256">            final InetAddress ipAddress = InetAddress.getByName(ip);</span>
+<span class="nc" id="L257">            final String country = databaseReader.country(ipAddress)</span>
+<span class="nc" id="L258">                .getCountry()</span>
+<span class="nc" id="L259">                .getName();</span>
+<span class="nc" id="L260">            System.out.println(country + &quot;====****&quot;);</span>
+<span class="nc" id="L261">            final User user = userRepository.findByEmail(username);</span>
+<span class="nc" id="L262">            final UserLocation loc = userLocationRepository.findByCountryAndUser(country, user);</span>
+<span class="nc bnc" id="L263" title="All 4 branches missed.">            if ((loc == null) || !loc.isEnabled()) {</span>
+<span class="nc" id="L264">                return createNewLocationToken(country, user);</span>
+            }
+<span class="nc" id="L266">        } catch (final Exception e) {</span>
+<span class="nc" id="L267">            return null;</span>
+<span class="nc" id="L268">        }</span>
+<span class="nc" id="L269">        return null;</span>
+    }
+
+    @Override
+    public String isValidNewLocationToken(String token) {
+<span class="nc" id="L274">        final NewLocationToken locToken = newLocationTokenRepository.findByToken(token);</span>
+<span class="nc bnc" id="L275" title="All 2 branches missed.">        if (locToken == null) {</span>
+<span class="nc" id="L276">            return null;</span>
+        }
+<span class="nc" id="L278">        UserLocation userLoc = locToken.getUserLocation();</span>
+<span class="nc" id="L279">        userLoc.setEnabled(true);</span>
+<span class="nc" id="L280">        userLoc = userLocationRepository.save(userLoc);</span>
+<span class="nc" id="L281">        newLocationTokenRepository.delete(locToken);</span>
+<span class="nc" id="L282">        return userLoc.getCountry();</span>
+    }
+
+    @Override
+    public void addUserLocation(User user, String ip) {
+
+<span class="nc bnc" id="L288" title="All 2 branches missed.">        if(!isGeoIpLibEnabled()) {</span>
+<span class="nc" id="L289">            return;</span>
+        }
+
+        try {
+<span class="nc" id="L293">            final InetAddress ipAddress = InetAddress.getByName(ip);</span>
+<span class="nc" id="L294">            final String country = databaseReader.country(ipAddress)</span>
+<span class="nc" id="L295">                .getCountry()</span>
+<span class="nc" id="L296">                .getName();</span>
+<span class="nc" id="L297">            UserLocation loc = new UserLocation(country, user);</span>
+<span class="nc" id="L298">            loc.setEnabled(true);</span>
+<span class="nc" id="L299">            userLocationRepository.save(loc);</span>
+<span class="nc" id="L300">        } catch (final Exception e) {</span>
+<span class="nc" id="L301">            throw new RuntimeException(e);</span>
+<span class="nc" id="L302">        }</span>
+<span class="nc" id="L303">    }</span>
+
+    private boolean isGeoIpLibEnabled() {
+<span class="nc" id="L306">        return Boolean.parseBoolean(env.getProperty(&quot;geo.ip.lib.enabled&quot;));</span>
+    }
+
+    private NewLocationToken createNewLocationToken(String country, User user) {
+<span class="nc" id="L310">        UserLocation loc = new UserLocation(country, user);</span>
+<span class="nc" id="L311">        loc = userLocationRepository.save(loc);</span>
+
+<span class="nc" id="L313">        final NewLocationToken token = new NewLocationToken(UUID.randomUUID()</span>
+<span class="nc" id="L314">            .toString(), loc);</span>
+<span class="nc" id="L315">        return newLocationTokenRepository.save(token);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>

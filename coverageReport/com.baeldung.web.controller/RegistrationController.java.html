@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RegistrationController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">spring-security-login-and-registration</a> &gt; <a href="index.source.html" class="el_package">com.baeldung.web.controller</a> &gt; <span class="el_source">RegistrationController.java</span></div><h1>RegistrationController.java</h1><pre class="source lang-java linenums">package com.baeldung.web.controller;
+
+import com.baeldung.persistence.model.Privilege;
+import com.baeldung.persistence.model.Role;
+import com.baeldung.persistence.model.User;
+import com.baeldung.registration.OnRegistrationCompleteEvent;
+import com.baeldung.security.ISecurityUserService;
+import com.baeldung.service.IUserService;
+import com.baeldung.web.dto.UserDto;
+import com.baeldung.web.util.GenericResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.MessageSource;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.ModelMap;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.ModelAndView;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import java.io.UnsupportedEncodingException;
+import java.util.Collection;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+@Controller
+public class RegistrationController {
+
+<span class="nc" id="L43">    private final Logger LOGGER = LoggerFactory.getLogger(getClass());</span>
+
+    @Autowired
+    private IUserService userService;
+
+    @Autowired
+    private ISecurityUserService securityUserService;
+
+    @Autowired
+    private MessageSource messages;
+
+    public RegistrationController() {
+<span class="nc" id="L55">        super();</span>
+<span class="nc" id="L56">    }</span>
+
+    @GetMapping(&quot;/registrationConfirm&quot;)
+    public ModelAndView confirmRegistration(final HttpServletRequest request, final ModelMap model, @RequestParam(&quot;token&quot;) final String token) throws UnsupportedEncodingException {
+<span class="nc" id="L60">        Locale locale = request.getLocale();</span>
+<span class="nc" id="L61">        model.addAttribute(&quot;lang&quot;, locale.getLanguage());</span>
+<span class="nc" id="L62">        final String result = userService.validateVerificationToken(token);</span>
+<span class="nc bnc" id="L63" title="All 2 branches missed.">        if (result.equals(&quot;valid&quot;)) {</span>
+<span class="nc" id="L64">            final User user = userService.getUser(token);</span>
+            // if (user.isUsing2FA()) {
+            // model.addAttribute(&quot;qr&quot;, userService.generateQRUrl(user));
+            // return &quot;redirect:/qrcode.html?lang=&quot; + locale.getLanguage();
+            // }
+<span class="nc" id="L69">            authWithoutPassword(user);</span>
+<span class="nc" id="L70">            model.addAttribute(&quot;messageKey&quot;, &quot;message.accountVerified&quot;);</span>
+<span class="nc" id="L71">            return new ModelAndView(&quot;redirect:/console&quot;, model);</span>
+        }
+
+<span class="nc" id="L74">        model.addAttribute(&quot;messageKey&quot;, &quot;auth.message.&quot; + result);</span>
+<span class="nc" id="L75">        model.addAttribute(&quot;expired&quot;, &quot;expired&quot;.equals(result));</span>
+<span class="nc" id="L76">        model.addAttribute(&quot;token&quot;, token);</span>
+<span class="nc" id="L77">        return new ModelAndView(&quot;redirect:/badUser&quot;, model);</span>
+    }
+
+    @GetMapping(&quot;/console&quot;)
+    public ModelAndView console(final HttpServletRequest request, final ModelMap model, @RequestParam(&quot;messageKey&quot;) final Optional&lt;String&gt; messageKey) {
+
+<span class="nc" id="L83">        Locale locale = request.getLocale();</span>
+<span class="nc" id="L84">        messageKey.ifPresent( key -&gt; {</span>
+<span class="nc" id="L85">                    String message = messages.getMessage(key, null, locale);</span>
+<span class="nc" id="L86">                    model.addAttribute(&quot;message&quot;, message);</span>
+<span class="nc" id="L87">                }</span>
+        );
+
+<span class="nc" id="L90">        return new ModelAndView(&quot;console&quot;, model);</span>
+    }
+
+    @GetMapping(&quot;/badUser&quot;)
+    public ModelAndView badUser(final HttpServletRequest request, final ModelMap model, @RequestParam(&quot;messageKey&quot; ) final Optional&lt;String&gt; messageKey, @RequestParam(&quot;expired&quot; ) final Optional&lt;String&gt; expired, @RequestParam(&quot;token&quot; ) final Optional&lt;String&gt; token) {
+
+<span class="nc" id="L96">        Locale locale = request.getLocale();</span>
+<span class="nc" id="L97">        messageKey.ifPresent( key -&gt; {</span>
+<span class="nc" id="L98">                    String message = messages.getMessage(key, null, locale);</span>
+<span class="nc" id="L99">                    model.addAttribute(&quot;message&quot;, message);</span>
+<span class="nc" id="L100">                }</span>
+        );
+
+<span class="nc" id="L103">        expired.ifPresent( e -&gt; model.addAttribute(&quot;expired&quot;, e));</span>
+<span class="nc" id="L104">        token.ifPresent( t -&gt; model.addAttribute(&quot;token&quot;, t));</span>
+
+<span class="nc" id="L106">        return new ModelAndView(&quot;badUser&quot;, model);</span>
+    }
+
+    @GetMapping(&quot;/user/changePassword&quot;)
+    public ModelAndView showChangePasswordPage(final ModelMap model, @RequestParam(&quot;token&quot;) final String token) {
+<span class="nc" id="L111">        final String result = securityUserService.validatePasswordResetToken(token);</span>
+
+<span class="nc bnc" id="L113" title="All 2 branches missed.">        if(result != null) {</span>
+<span class="nc" id="L114">            String messageKey = &quot;auth.message.&quot; + result;</span>
+<span class="nc" id="L115">            model.addAttribute(&quot;messageKey&quot;, messageKey);</span>
+<span class="nc" id="L116">            return new ModelAndView(&quot;redirect:/login&quot;, model);</span>
+        } else {
+<span class="nc" id="L118">            model.addAttribute(&quot;token&quot;, token);</span>
+<span class="nc" id="L119">            return new ModelAndView(&quot;redirect:/updatePassword&quot;);</span>
+        }
+    }
+
+    @GetMapping(&quot;/updatePassword&quot;)
+    public ModelAndView updatePassword(final HttpServletRequest request, final ModelMap model, @RequestParam(&quot;messageKey&quot; ) final Optional&lt;String&gt; messageKey) {
+<span class="nc" id="L125">        Locale locale = request.getLocale();</span>
+<span class="nc" id="L126">        model.addAttribute(&quot;lang&quot;, locale.getLanguage());</span>
+<span class="nc" id="L127">        messageKey.ifPresent( key -&gt; {</span>
+<span class="nc" id="L128">                    String message = messages.getMessage(key, null, locale);</span>
+<span class="nc" id="L129">                    model.addAttribute(&quot;message&quot;, message);</span>
+<span class="nc" id="L130">                }</span>
+        );
+
+<span class="nc" id="L133">        return new ModelAndView(&quot;updatePassword&quot;, model);</span>
+    }
+
+    @GetMapping(&quot;/login&quot;)
+    public ModelAndView login(final HttpServletRequest request, final ModelMap model, @RequestParam(&quot;messageKey&quot; ) final Optional&lt;String&gt; messageKey, @RequestParam(&quot;error&quot; ) final Optional&lt;String&gt; error) {
+<span class="nc" id="L138">        Locale locale = request.getLocale();</span>
+<span class="nc" id="L139">        model.addAttribute(&quot;lang&quot;, locale.getLanguage());</span>
+<span class="nc" id="L140">        messageKey.ifPresent( key -&gt; {</span>
+<span class="nc" id="L141">                    String message = messages.getMessage(key, null, locale);</span>
+<span class="nc" id="L142">                    model.addAttribute(&quot;message&quot;, message);</span>
+<span class="nc" id="L143">                }</span>
+        );
+
+<span class="nc" id="L146">        error.ifPresent( e -&gt;  model.addAttribute(&quot;error&quot;, e));</span>
+
+<span class="nc" id="L148">        return new ModelAndView(&quot;login&quot;, model);</span>
+    }
+
+    @RequestMapping(value = &quot;/user/enableNewLoc&quot;, method = RequestMethod.GET)
+    public String enableNewLoc(Locale locale, Model model, @RequestParam(&quot;token&quot;) String token) {
+<span class="nc" id="L153">        final String loc = userService.isValidNewLocationToken(token);</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">        if (loc != null) {</span>
+<span class="nc" id="L155">            model.addAttribute(&quot;message&quot;, messages.getMessage(&quot;message.newLoc.enabled&quot;, new Object[] { loc }, locale));</span>
+        } else {
+<span class="nc" id="L157">            model.addAttribute(&quot;message&quot;, messages.getMessage(&quot;message.error&quot;, null, locale));</span>
+        }
+<span class="nc" id="L159">        return &quot;redirect:/login?lang=&quot; + locale.getLanguage();</span>
+    }
+
+    // ============== NON-API ============
+
+    public void authWithoutPassword(User user) {
+
+<span class="nc" id="L166">        List&lt;Privilege&gt; privileges = user.getRoles()</span>
+<span class="nc" id="L167">                .stream()</span>
+<span class="nc" id="L168">                .map(Role::getPrivileges)</span>
+<span class="nc" id="L169">                .flatMap(Collection::stream)</span>
+<span class="nc" id="L170">                .distinct()</span>
+<span class="nc" id="L171">                .collect(Collectors.toList());</span>
+
+<span class="nc" id="L173">        List&lt;GrantedAuthority&gt; authorities = privileges.stream()</span>
+<span class="nc" id="L174">                .map(p -&gt; new SimpleGrantedAuthority(p.getName()))</span>
+<span class="nc" id="L175">                .collect(Collectors.toList());</span>
+
+<span class="nc" id="L177">        Authentication authentication = new UsernamePasswordAuthenticationToken(user, null, authorities);</span>
+<span class="nc" id="L178">        SecurityContextHolder.getContext().setAuthentication(authentication);</span>
+<span class="nc" id="L179">    }</span>
+
+    private String getAppUrl(HttpServletRequest request) {
+<span class="nc" id="L182">        return &quot;http://&quot; + request.getServerName() + &quot;:&quot; + request.getServerPort() + request.getContextPath();</span>
+    }
+
+    private final String getClientIP(HttpServletRequest request) {
+<span class="nc" id="L186">        final String xfHeader = request.getHeader(&quot;X-Forwarded-For&quot;);</span>
+<span class="nc bnc" id="L187" title="All 6 branches missed.">        if (xfHeader == null || xfHeader.isEmpty() || !xfHeader.contains(request.getRemoteAddr())) {</span>
+<span class="nc" id="L188">            return request.getRemoteAddr();</span>
+        }
+<span class="nc" id="L190">        return xfHeader.split(&quot;,&quot;)[0];</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>

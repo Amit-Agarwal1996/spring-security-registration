@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RegistrationCaptchaController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">spring-security-login-and-registration</a> &gt; <a href="index.source.html" class="el_package">com.baeldung.web.controller</a> &gt; <span class="el_source">RegistrationCaptchaController.java</span></div><h1>RegistrationCaptchaController.java</h1><pre class="source lang-java linenums">package com.baeldung.web.controller;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.baeldung.captcha.CaptchaServiceV3;
+import com.baeldung.captcha.ICaptchaService;
+import com.baeldung.persistence.model.User;
+import com.baeldung.registration.OnRegistrationCompleteEvent;
+import com.baeldung.service.IUserService;
+import com.baeldung.web.dto.UserDto;
+import com.baeldung.web.util.GenericResponse;
+
+@RestController
+public class RegistrationCaptchaController {
+<span class="nc" id="L23">    private final Logger LOGGER = LoggerFactory.getLogger(getClass());</span>
+
+    @Autowired
+    private IUserService userService;
+
+    @Autowired
+    private ICaptchaService captchaService;
+    
+    @Autowired
+    private ICaptchaService captchaServiceV3;
+
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
+
+    public RegistrationCaptchaController() {
+<span class="nc" id="L38">        super();</span>
+<span class="nc" id="L39">    }</span>
+
+    // Registration
+    @PostMapping(&quot;/user/registrationCaptcha&quot;)
+    public GenericResponse captchaRegisterUserAccount(@Valid final UserDto accountDto, final HttpServletRequest request) {
+
+<span class="nc" id="L45">        final String response = request.getParameter(&quot;g-recaptcha-response&quot;);</span>
+<span class="nc" id="L46">        captchaService.processResponse(response);</span>
+
+<span class="nc" id="L48">        return registerNewUserHandler(accountDto, request);</span>
+    }
+
+    
+    // Registration reCaptchaV3
+    @PostMapping(&quot;/user/registrationCaptchaV3&quot;)
+    public GenericResponse captchaV3RegisterUserAccount(@Valid final UserDto accountDto, final HttpServletRequest request) {
+
+<span class="nc" id="L56">        final String response = request.getParameter(&quot;response&quot;);</span>
+<span class="nc" id="L57">        captchaServiceV3.processResponse(response, CaptchaServiceV3.REGISTER_ACTION);</span>
+
+<span class="nc" id="L59">        return registerNewUserHandler(accountDto, request);</span>
+    }
+    
+    private GenericResponse registerNewUserHandler(final UserDto accountDto, final HttpServletRequest request) {
+<span class="nc" id="L63">        LOGGER.debug(&quot;Registering user account with information: {}&quot;, accountDto);</span>
+
+<span class="nc" id="L65">        final User registered = userService.registerNewUserAccount(accountDto);</span>
+<span class="nc" id="L66">        eventPublisher.publishEvent(new OnRegistrationCompleteEvent(registered, request.getLocale(), getAppUrl(request)));</span>
+<span class="nc" id="L67">        return new GenericResponse(&quot;success&quot;);</span>
+    }
+    
+
+    private String getAppUrl(HttpServletRequest request) {
+<span class="nc" id="L72">        return &quot;http://&quot; + request.getServerName() + &quot;:&quot; + request.getServerPort() + request.getContextPath();</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>

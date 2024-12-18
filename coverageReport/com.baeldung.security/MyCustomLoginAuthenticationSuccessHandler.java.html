@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MyCustomLoginAuthenticationSuccessHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">spring-security-login-and-registration</a> &gt; <a href="index.source.html" class="el_package">com.baeldung.security</a> &gt; <span class="el_source">MyCustomLoginAuthenticationSuccessHandler.java</span></div><h1>MyCustomLoginAuthenticationSuccessHandler.java</h1><pre class="source lang-java linenums">package com.baeldung.security;
+
+import java.io.IOException;
+
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
+import com.baeldung.persistence.model.User;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.web.DefaultRedirectStrategy;
+import org.springframework.security.web.RedirectStrategy;
+import org.springframework.security.web.WebAttributes;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+
+//@Component(&quot;myAuthenticationSuccessHandler&quot;)
+<span class="nc" id="L19">public class MyCustomLoginAuthenticationSuccessHandler implements AuthenticationSuccessHandler {</span>
+
+<span class="nc" id="L21">    private RedirectStrategy redirectStrategy = new DefaultRedirectStrategy();</span>
+
+    @Autowired
+    ActiveUserStore activeUserStore;
+
+    @Override
+    public void onAuthenticationSuccess(final HttpServletRequest request, final HttpServletResponse response, final Authentication authentication) throws IOException {
+<span class="nc" id="L28">        addWelcomeCookie(gerUserName(authentication), response);</span>
+<span class="nc" id="L29">        redirectStrategy.sendRedirect(request, response, &quot;/homepage.html?user=&quot; + authentication.getName());</span>
+
+<span class="nc" id="L31">        final HttpSession session = request.getSession(false);</span>
+<span class="nc bnc" id="L32" title="All 2 branches missed.">        if (session != null) {</span>
+<span class="nc" id="L33">            session.setMaxInactiveInterval(30 * 60);</span>
+            String username;
+<span class="nc bnc" id="L35" title="All 2 branches missed.">            if (authentication.getPrincipal() instanceof User) {</span>
+<span class="nc" id="L36">            	username = ((User)authentication.getPrincipal()).getEmail();</span>
+            }
+            else {
+<span class="nc" id="L39">            	username = authentication.getName();</span>
+            }
+       
+<span class="nc" id="L42">            LoggedUser user = new LoggedUser(username, activeUserStore);</span>
+<span class="nc" id="L43">            session.setAttribute(&quot;user&quot;, user);</span>
+        }
+<span class="nc" id="L45">        clearAuthenticationAttributes(request);</span>
+<span class="nc" id="L46">    }</span>
+
+    private String gerUserName(final Authentication authentication) {
+<span class="nc" id="L49">        return ((User) authentication.getPrincipal()).getFirstName();</span>
+    }
+
+    private void addWelcomeCookie(final String user, final HttpServletResponse response) {
+<span class="nc" id="L53">        Cookie welcomeCookie = getWelcomeCookie(user);</span>
+<span class="nc" id="L54">        response.addCookie(welcomeCookie);</span>
+<span class="nc" id="L55">    }</span>
+
+    private Cookie getWelcomeCookie(final String user) {
+<span class="nc" id="L58">        Cookie welcomeCookie = new Cookie(&quot;welcome&quot;, user);</span>
+<span class="nc" id="L59">        welcomeCookie.setMaxAge(60 * 60 * 24 * 30); // 30 days</span>
+<span class="nc" id="L60">        return welcomeCookie;</span>
+    }
+
+    protected void clearAuthenticationAttributes(final HttpServletRequest request) {
+<span class="nc" id="L64">        final HttpSession session = request.getSession(false);</span>
+<span class="nc bnc" id="L65" title="All 2 branches missed.">        if (session == null) {</span>
+<span class="nc" id="L66">            return;</span>
+        }
+<span class="nc" id="L68">        session.removeAttribute(WebAttributes.AUTHENTICATION_EXCEPTION);</span>
+<span class="nc" id="L69">    }</span>
+
+    public void setRedirectStrategy(final RedirectStrategy redirectStrategy) {
+<span class="nc" id="L72">        this.redirectStrategy = redirectStrategy;</span>
+<span class="nc" id="L73">    }</span>
+
+    protected RedirectStrategy getRedirectStrategy() {
+<span class="nc" id="L76">        return redirectStrategy;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>
