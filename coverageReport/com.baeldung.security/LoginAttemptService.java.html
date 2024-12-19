@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LoginAttemptService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">spring-security-login-and-registration</a> &gt; <a href="index.source.html" class="el_package">com.baeldung.security</a> &gt; <span class="el_source">LoginAttemptService.java</span></div><h1>LoginAttemptService.java</h1><pre class="source lang-java linenums">package com.baeldung.security;
+
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+
+import jakarta.servlet.http.HttpServletRequest;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+
+@Service
+public class LoginAttemptService {
+
+    public static final int MAX_ATTEMPT = 10;
+    private LoadingCache&lt;String, Integer&gt; attemptsCache;
+
+    @Autowired
+    private HttpServletRequest request;
+
+    public LoginAttemptService() {
+<span class="nc" id="L25">        super();</span>
+<span class="nc" id="L26">        attemptsCache = CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.DAYS).build(new CacheLoader&lt;String, Integer&gt;() {</span>
+            @Override
+            public Integer load(final String key) {
+<span class="nc" id="L29">                return 0;</span>
+            }
+        });
+<span class="nc" id="L32">    }</span>
+
+    public void loginFailed(final String key) {
+        int attempts;
+        try {
+<span class="nc" id="L37">            attempts = attemptsCache.get(key);</span>
+<span class="nc" id="L38">        } catch (final ExecutionException e) {</span>
+<span class="nc" id="L39">            attempts = 0;</span>
+<span class="nc" id="L40">        }</span>
+<span class="nc" id="L41">        attempts++;</span>
+<span class="nc" id="L42">        attemptsCache.put(key, attempts);</span>
+<span class="nc" id="L43">    }</span>
+
+    public boolean isBlocked() {
+        try {
+<span class="nc bnc" id="L47" title="All 2 branches missed.">            return attemptsCache.get(getClientIP()) &gt;= MAX_ATTEMPT;</span>
+<span class="nc" id="L48">        } catch (final ExecutionException e) {</span>
+<span class="nc" id="L49">            return false;</span>
+        }
+    }
+
+    private String getClientIP() {
+<span class="nc" id="L54">        final String xfHeader = request.getHeader(&quot;X-Forwarded-For&quot;);</span>
+<span class="nc bnc" id="L55" title="All 2 branches missed.">        if (xfHeader != null) {</span>
+<span class="nc" id="L56">            return xfHeader.split(&quot;,&quot;)[0];</span>
+        }
+<span class="nc" id="L58">        return request.getRemoteAddr();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>

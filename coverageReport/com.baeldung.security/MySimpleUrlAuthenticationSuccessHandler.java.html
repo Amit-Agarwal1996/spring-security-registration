@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MySimpleUrlAuthenticationSuccessHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">spring-security-login-and-registration</a> &gt; <a href="index.source.html" class="el_package">com.baeldung.security</a> &gt; <span class="el_source">MySimpleUrlAuthenticationSuccessHandler.java</span></div><h1>MySimpleUrlAuthenticationSuccessHandler.java</h1><pre class="source lang-java linenums">package com.baeldung.security;
+
+import com.baeldung.persistence.model.User;
+import com.baeldung.service.DeviceService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.web.DefaultRedirectStrategy;
+import org.springframework.security.web.RedirectStrategy;
+import org.springframework.security.web.WebAttributes;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.stereotype.Component;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import java.io.IOException;
+import java.util.Collection;
+
+@Component(&quot;myAuthenticationSuccessHandler&quot;)
+<span class="nc" id="L24">public class MySimpleUrlAuthenticationSuccessHandler implements AuthenticationSuccessHandler {</span>
+<span class="nc" id="L25">    private final Logger logger = LoggerFactory.getLogger(getClass());</span>
+
+<span class="nc" id="L27">    private RedirectStrategy redirectStrategy = new DefaultRedirectStrategy();</span>
+
+    @Autowired
+    ActiveUserStore activeUserStore;
+
+    @Autowired
+    private DeviceService deviceService;
+
+    @Autowired
+    private Environment env;
+
+    @Override
+    public void onAuthenticationSuccess(final HttpServletRequest request, final HttpServletResponse response, final Authentication authentication) throws IOException {
+<span class="nc" id="L40">        handle(request, response, authentication);</span>
+<span class="nc" id="L41">        final HttpSession session = request.getSession(false);</span>
+<span class="nc bnc" id="L42" title="All 2 branches missed.">        if (session != null) {</span>
+<span class="nc" id="L43">            session.setMaxInactiveInterval(30 * 60);</span>
+
+            String username;
+<span class="nc bnc" id="L46" title="All 2 branches missed.">            if (authentication.getPrincipal() instanceof User) {</span>
+<span class="nc" id="L47">            	username = ((User)authentication.getPrincipal()).getEmail();</span>
+            }
+            else {
+<span class="nc" id="L50">            	username = authentication.getName();</span>
+            }
+<span class="nc" id="L52">            LoggedUser user = new LoggedUser(username, activeUserStore);</span>
+<span class="nc" id="L53">            session.setAttribute(&quot;user&quot;, user);</span>
+        }
+<span class="nc" id="L55">        clearAuthenticationAttributes(request);</span>
+
+<span class="nc" id="L57">        loginNotification(authentication, request);</span>
+<span class="nc" id="L58">    }</span>
+
+    private void loginNotification(Authentication authentication, HttpServletRequest request) {
+        try {
+<span class="nc bnc" id="L62" title="All 4 branches missed.">            if (authentication.getPrincipal() instanceof User &amp;&amp; isGeoIpLibEnabled()) {</span>
+<span class="nc" id="L63">                deviceService.verifyDevice(((User)authentication.getPrincipal()), request);</span>
+            }
+<span class="nc" id="L65">        } catch (Exception e) {</span>
+<span class="nc" id="L66">            logger.error(&quot;An error occurred while verifying device or location&quot;, e);</span>
+<span class="nc" id="L67">            throw new RuntimeException(e);</span>
+<span class="nc" id="L68">        }</span>
+
+<span class="nc" id="L70">    }</span>
+
+    protected void handle(final HttpServletRequest request, final HttpServletResponse response, final Authentication authentication) throws IOException {
+<span class="nc" id="L73">        final String targetUrl = determineTargetUrl(authentication);</span>
+
+<span class="nc bnc" id="L75" title="All 2 branches missed.">        if (response.isCommitted()) {</span>
+<span class="nc" id="L76">            logger.debug(&quot;Response has already been committed. Unable to redirect to &quot; + targetUrl);</span>
+<span class="nc" id="L77">            return;</span>
+        }
+<span class="nc" id="L79">        redirectStrategy.sendRedirect(request, response, targetUrl);</span>
+<span class="nc" id="L80">    }</span>
+
+    protected String determineTargetUrl(final Authentication authentication) {
+<span class="nc" id="L83">        boolean isUser = false;</span>
+<span class="nc" id="L84">        boolean isAdmin = false;</span>
+<span class="nc" id="L85">        final Collection&lt;? extends GrantedAuthority&gt; authorities = authentication.getAuthorities();</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">        for (final GrantedAuthority grantedAuthority : authorities) {</span>
+<span class="nc bnc" id="L87" title="All 2 branches missed.">            if (grantedAuthority.getAuthority().equals(&quot;READ_PRIVILEGE&quot;)) {</span>
+<span class="nc" id="L88">                isUser = true;</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">            } else if (grantedAuthority.getAuthority().equals(&quot;WRITE_PRIVILEGE&quot;)) {</span>
+<span class="nc" id="L90">                isAdmin = true;</span>
+<span class="nc" id="L91">                isUser = false;</span>
+<span class="nc" id="L92">                break;</span>
+            }
+<span class="nc" id="L94">        }</span>
+<span class="nc bnc" id="L95" title="All 2 branches missed.">        if (isUser) {</span>
+        	 String username;
+<span class="nc bnc" id="L97" title="All 2 branches missed.">             if (authentication.getPrincipal() instanceof User) {</span>
+<span class="nc" id="L98">             	username = ((User)authentication.getPrincipal()).getEmail();</span>
+             }
+             else {
+<span class="nc" id="L101">             	username = authentication.getName();</span>
+             }
+
+<span class="nc" id="L104">            return &quot;/homepage.html?user=&quot;+username;</span>
+<span class="nc bnc" id="L105" title="All 2 branches missed.">        } else if (isAdmin) {</span>
+<span class="nc" id="L106">            return &quot;/console&quot;;</span>
+        } else {
+<span class="nc" id="L108">            throw new IllegalStateException();</span>
+        }
+    }
+
+    protected void clearAuthenticationAttributes(final HttpServletRequest request) {
+<span class="nc" id="L113">        final HttpSession session = request.getSession(false);</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">        if (session == null) {</span>
+<span class="nc" id="L115">            return;</span>
+        }
+<span class="nc" id="L117">        session.removeAttribute(WebAttributes.AUTHENTICATION_EXCEPTION);</span>
+<span class="nc" id="L118">    }</span>
+
+    public void setRedirectStrategy(final RedirectStrategy redirectStrategy) {
+<span class="nc" id="L121">        this.redirectStrategy = redirectStrategy;</span>
+<span class="nc" id="L122">    }</span>
+
+    protected RedirectStrategy getRedirectStrategy() {
+<span class="nc" id="L125">        return redirectStrategy;</span>
+    }
+
+    private boolean isGeoIpLibEnabled() {
+<span class="nc" id="L129">        return Boolean.parseBoolean(env.getProperty(&quot;geo.ip.lib.enabled&quot;));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>

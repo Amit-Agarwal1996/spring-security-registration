@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ReCaptchaAttemptService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">spring-security-login-and-registration</a> &gt; <a href="index.source.html" class="el_package">com.baeldung.captcha</a> &gt; <span class="el_source">ReCaptchaAttemptService.java</span></div><h1>ReCaptchaAttemptService.java</h1><pre class="source lang-java linenums">package com.baeldung.captcha;
+
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import org.springframework.stereotype.Service;
+import java.util.concurrent.TimeUnit;
+
+@Service(&quot;reCaptchaAttemptService&quot;)
+public class ReCaptchaAttemptService {
+<span class="nc" id="L11">    private final int MAX_ATTEMPT = 4;</span>
+    private LoadingCache&lt;String, Integer&gt; attemptsCache;
+
+<span class="nc" id="L14">    public ReCaptchaAttemptService() {</span>
+<span class="nc" id="L15">        attemptsCache = CacheBuilder.newBuilder().expireAfterWrite(4, TimeUnit.HOURS).build(new CacheLoader&lt;String, Integer&gt;() {</span>
+            @Override
+            public Integer load(final String key) {
+<span class="nc" id="L18">                return 0;</span>
+            }
+        });
+<span class="nc" id="L21">    }</span>
+
+    public void reCaptchaSucceeded(final String key) {
+<span class="nc" id="L24">        attemptsCache.invalidate(key);</span>
+<span class="nc" id="L25">    }</span>
+
+    public void reCaptchaFailed(final String key) {
+<span class="nc" id="L28">        int attempts = attemptsCache.getUnchecked(key);</span>
+<span class="nc" id="L29">        attempts++;</span>
+<span class="nc" id="L30">        attemptsCache.put(key, attempts);</span>
+<span class="nc" id="L31">    }</span>
+
+    public boolean isBlocked(final String key) {
+<span class="nc bnc" id="L34" title="All 2 branches missed.">        return attemptsCache.getUnchecked(key) &gt;= MAX_ATTEMPT;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>
