@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RegistrationRestController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">spring-security-login-and-registration</a> &gt; <a href="index.source.html" class="el_package">com.baeldung.web.controller</a> &gt; <span class="el_source">RegistrationRestController.java</span></div><h1>RegistrationRestController.java</h1><pre class="source lang-java linenums">package com.baeldung.web.controller;
+
+import com.baeldung.persistence.model.User;
+import com.baeldung.persistence.model.VerificationToken;
+import com.baeldung.registration.OnRegistrationCompleteEvent;
+import com.baeldung.security.ISecurityUserService;
+import com.baeldung.service.IUserService;
+import com.baeldung.web.dto.PasswordDto;
+import com.baeldung.web.dto.UserDto;
+import com.baeldung.web.error.InvalidOldPasswordException;
+import com.baeldung.web.util.GenericResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.MessageSource;
+import org.springframework.core.env.Environment;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import java.io.UnsupportedEncodingException;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.UUID;
+
+@RestController
+public class RegistrationRestController {
+<span class="nc" id="L32">    private final Logger LOGGER = LoggerFactory.getLogger(getClass());</span>
+
+    @Autowired
+    private IUserService userService;
+
+    @Autowired
+    private ISecurityUserService securityUserService;
+
+    @Autowired
+    private MessageSource messages;
+
+    @Autowired
+    private JavaMailSender mailSender;
+
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
+
+    @Autowired
+    private Environment env;
+
+    public RegistrationRestController() {
+<span class="nc" id="L53">        super();</span>
+<span class="nc" id="L54">    }</span>
+
+    // Registration
+    @PostMapping(&quot;/user/registration&quot;)
+    public GenericResponse registerUserAccount(@Valid final UserDto accountDto, final HttpServletRequest request) {
+<span class="nc" id="L59">        LOGGER.debug(&quot;Registering user account with information: {}&quot;, accountDto);</span>
+
+<span class="nc" id="L61">        final User registered = userService.registerNewUserAccount(accountDto);</span>
+<span class="nc" id="L62">        userService.addUserLocation(registered, getClientIP(request));</span>
+<span class="nc" id="L63">        eventPublisher.publishEvent(new OnRegistrationCompleteEvent(registered, request.getLocale(), getAppUrl(request)));</span>
+<span class="nc" id="L64">        return new GenericResponse(&quot;success&quot;);</span>
+    }
+
+    // User activation - verification
+    @GetMapping(&quot;/user/resendRegistrationToken&quot;)
+    public GenericResponse resendRegistrationToken(final HttpServletRequest request, @RequestParam(&quot;token&quot;) final String existingToken) {
+<span class="nc" id="L70">        final VerificationToken newToken = userService.generateNewVerificationToken(existingToken);</span>
+<span class="nc" id="L71">        final User user = userService.getUser(newToken.getToken());</span>
+<span class="nc" id="L72">        mailSender.send(constructResendVerificationTokenEmail(getAppUrl(request), request.getLocale(), newToken, user));</span>
+<span class="nc" id="L73">        return new GenericResponse(messages.getMessage(&quot;message.resendToken&quot;, null, request.getLocale()));</span>
+    }
+
+    // Reset password
+    @PostMapping(&quot;/user/resetPassword&quot;)
+    public GenericResponse resetPassword(final HttpServletRequest request, @RequestParam(&quot;email&quot;) final String userEmail) {
+<span class="nc" id="L79">        final User user = userService.findUserByEmail(userEmail);</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">        if (user != null) {</span>
+<span class="nc" id="L81">            final String token = UUID.randomUUID().toString();</span>
+<span class="nc" id="L82">            userService.createPasswordResetTokenForUser(user, token);</span>
+<span class="nc" id="L83">            mailSender.send(constructResetTokenEmail(getAppUrl(request), request.getLocale(), token, user));</span>
+        }
+<span class="nc" id="L85">        return new GenericResponse(messages.getMessage(&quot;message.resetPasswordEmail&quot;, null, request.getLocale()));</span>
+    }
+
+    // Save password
+    @PostMapping(&quot;/user/savePassword&quot;)
+    public GenericResponse savePassword(final Locale locale, @Valid PasswordDto passwordDto) {
+
+<span class="nc" id="L92">        final String result = securityUserService.validatePasswordResetToken(passwordDto.getToken());</span>
+
+<span class="nc bnc" id="L94" title="All 2 branches missed.">        if(result != null) {</span>
+<span class="nc" id="L95">            return new GenericResponse(messages.getMessage(&quot;auth.message.&quot; + result, null, locale));</span>
+        }
+
+<span class="nc" id="L98">        Optional&lt;User&gt; user = userService.getUserByPasswordResetToken(passwordDto.getToken());</span>
+<span class="nc bnc" id="L99" title="All 2 branches missed.">        if(user.isPresent()) {</span>
+<span class="nc" id="L100">            userService.changeUserPassword(user.get(), passwordDto.getNewPassword());</span>
+<span class="nc" id="L101">            return new GenericResponse(messages.getMessage(&quot;message.resetPasswordSuc&quot;, null, locale));</span>
+        } else {
+<span class="nc" id="L103">            return new GenericResponse(messages.getMessage(&quot;auth.message.invalid&quot;, null, locale));</span>
+        }
+    }
+
+    // Change user password
+    @PostMapping(&quot;/user/updatePassword&quot;)
+    public GenericResponse changeUserPassword(final Locale locale, @Valid PasswordDto passwordDto) {
+<span class="nc" id="L110">        final User user = userService.findUserByEmail(((User) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getEmail());</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">        if (!userService.checkIfValidOldPassword(user, passwordDto.getOldPassword())) {</span>
+<span class="nc" id="L112">            throw new InvalidOldPasswordException();</span>
+        }
+<span class="nc" id="L114">        userService.changeUserPassword(user, passwordDto.getNewPassword());</span>
+<span class="nc" id="L115">        return new GenericResponse(messages.getMessage(&quot;message.updatePasswordSuc&quot;, null, locale));</span>
+    }
+
+    // Change user 2 factor authentication
+    @PostMapping(&quot;/user/update/2fa&quot;)
+    public GenericResponse modifyUser2FA(@RequestParam(&quot;use2FA&quot;) final boolean use2FA) throws UnsupportedEncodingException {
+<span class="nc" id="L121">        final User user = userService.updateUser2FA(use2FA);</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">        if (use2FA) {</span>
+<span class="nc" id="L123">            return new GenericResponse(userService.generateQRUrl(user));</span>
+        }
+<span class="nc" id="L125">        return null;</span>
+    }
+
+    // ============== NON-API ============
+
+    private SimpleMailMessage constructResendVerificationTokenEmail(final String contextPath, final Locale locale, final VerificationToken newToken, final User user) {
+<span class="nc" id="L131">        final String confirmationUrl = contextPath + &quot;/registrationConfirm.html?token=&quot; + newToken.getToken();</span>
+<span class="nc" id="L132">        final String message = messages.getMessage(&quot;message.resendToken&quot;, null, locale);</span>
+<span class="nc" id="L133">        return constructEmail(&quot;Resend Registration Token&quot;, message + &quot; \r\n&quot; + confirmationUrl, user);</span>
+    }
+
+    private SimpleMailMessage constructResetTokenEmail(final String contextPath, final Locale locale, final String token, final User user) {
+<span class="nc" id="L137">        final String url = contextPath + &quot;/user/changePassword?token=&quot; + token;</span>
+<span class="nc" id="L138">        final String message = messages.getMessage(&quot;message.resetPassword&quot;, null, locale);</span>
+<span class="nc" id="L139">        return constructEmail(&quot;Reset Password&quot;, message + &quot; \r\n&quot; + url, user);</span>
+    }
+
+    private SimpleMailMessage constructEmail(String subject, String body, User user) {
+<span class="nc" id="L143">        final SimpleMailMessage email = new SimpleMailMessage();</span>
+<span class="nc" id="L144">        email.setSubject(subject);</span>
+<span class="nc" id="L145">        email.setText(body);</span>
+<span class="nc" id="L146">        email.setTo(user.getEmail());</span>
+<span class="nc" id="L147">        email.setFrom(env.getProperty(&quot;support.email&quot;));</span>
+<span class="nc" id="L148">        return email;</span>
+    }
+
+    private String getAppUrl(HttpServletRequest request) {
+<span class="nc" id="L152">        return &quot;http://&quot; + request.getServerName() + &quot;:&quot; + request.getServerPort() + request.getContextPath();</span>
+    }
+
+    private String getClientIP(HttpServletRequest request) {
+<span class="nc" id="L156">        final String xfHeader = request.getHeader(&quot;X-Forwarded-For&quot;);</span>
+<span class="nc bnc" id="L157" title="All 6 branches missed.">        if (xfHeader == null || xfHeader.isEmpty() || !xfHeader.contains(request.getRemoteAddr())) {</span>
+<span class="nc" id="L158">            return request.getRemoteAddr();</span>
+        }
+<span class="nc" id="L160">        return xfHeader.split(&quot;,&quot;)[0];</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>

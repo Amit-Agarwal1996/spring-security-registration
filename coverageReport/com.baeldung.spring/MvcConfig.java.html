@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MvcConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">spring-security-login-and-registration</a> &gt; <a href="index.source.html" class="el_package">com.baeldung.spring</a> &gt; <span class="el_source">MvcConfig.java</span></div><h1>MvcConfig.java</h1><pre class="source lang-java linenums">package com.baeldung.spring;
+
+import java.util.Locale;
+
+import com.baeldung.validation.EmailValidator;
+import com.baeldung.validation.PasswordMatchesValidator;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.web.server.WebServerFactoryCustomizer;
+import org.springframework.boot.web.servlet.server.ConfigurableServletWebServerFactory;
+import org.springframework.context.MessageSource;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.validation.Validator;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
+import org.springframework.web.context.request.RequestContextListener;
+import org.springframework.web.servlet.LocaleResolver;
+import org.springframework.web.servlet.config.annotation.DefaultServletHandlerConfigurer;
+import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
+import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.servlet.i18n.CookieLocaleResolver;
+import org.springframework.web.servlet.i18n.LocaleChangeInterceptor;
+
+@Configuration
+@ComponentScan(basePackages = { &quot;com.baeldung.web&quot; })
+@EnableWebMvc
+public class MvcConfig implements WebMvcConfigurer {
+
+    public MvcConfig() {
+<span class="nc" id="L34">        super();</span>
+<span class="nc" id="L35">    }</span>
+
+    @Autowired
+    private MessageSource messageSource;
+
+    @Override
+    public void addViewControllers(final ViewControllerRegistry registry) {
+<span class="nc" id="L42">        registry.addViewController(&quot;/&quot;).setViewName(&quot;forward:/login&quot;);</span>
+<span class="nc" id="L43">        registry.addViewController(&quot;/loginRememberMe&quot;);</span>
+<span class="nc" id="L44">        registry.addViewController(&quot;/customLogin&quot;);</span>
+<span class="nc" id="L45">        registry.addViewController(&quot;/registration.html&quot;);</span>
+<span class="nc" id="L46">        registry.addViewController(&quot;/registrationCaptcha.html&quot;);</span>
+<span class="nc" id="L47">        registry.addViewController(&quot;/registrationReCaptchaV3.html&quot;);</span>
+<span class="nc" id="L48">        registry.addViewController(&quot;/logout.html&quot;);</span>
+<span class="nc" id="L49">        registry.addViewController(&quot;/homepage.html&quot;);</span>
+<span class="nc" id="L50">        registry.addViewController(&quot;/expiredAccount.html&quot;);</span>
+<span class="nc" id="L51">        registry.addViewController(&quot;/emailError.html&quot;);</span>
+<span class="nc" id="L52">        registry.addViewController(&quot;/home.html&quot;);</span>
+<span class="nc" id="L53">        registry.addViewController(&quot;/invalidSession.html&quot;);</span>
+<span class="nc" id="L54">        registry.addViewController(&quot;/admin.html&quot;);</span>
+<span class="nc" id="L55">        registry.addViewController(&quot;/successRegister.html&quot;);</span>
+<span class="nc" id="L56">        registry.addViewController(&quot;/forgetPassword.html&quot;);</span>
+<span class="nc" id="L57">        registry.addViewController(&quot;/updatePassword.html&quot;);</span>
+<span class="nc" id="L58">        registry.addViewController(&quot;/changePassword.html&quot;);</span>
+<span class="nc" id="L59">        registry.addViewController(&quot;/users.html&quot;);</span>
+<span class="nc" id="L60">        registry.addViewController(&quot;/qrcode.html&quot;);</span>
+<span class="nc" id="L61">    }</span>
+
+    @Override
+    public void configureDefaultServletHandling(final DefaultServletHandlerConfigurer configurer) {
+<span class="nc" id="L65">        configurer.enable();</span>
+<span class="nc" id="L66">    }</span>
+
+    @Override
+    public void addResourceHandlers(final ResourceHandlerRegistry registry) {
+<span class="nc" id="L70">        registry.addResourceHandler(&quot;/resources/**&quot;).addResourceLocations(&quot;/&quot;, &quot;/resources/&quot;);</span>
+<span class="nc" id="L71">    }</span>
+
+    @Override
+    public void addInterceptors(final InterceptorRegistry registry) {
+<span class="nc" id="L75">        final LocaleChangeInterceptor localeChangeInterceptor = new LocaleChangeInterceptor();</span>
+<span class="nc" id="L76">        localeChangeInterceptor.setParamName(&quot;lang&quot;);</span>
+<span class="nc" id="L77">        registry.addInterceptor(localeChangeInterceptor);</span>
+<span class="nc" id="L78">    }</span>
+
+    // beans
+
+    @Bean
+    public LocaleResolver localeResolver() {
+<span class="nc" id="L84">        final CookieLocaleResolver cookieLocaleResolver = new CookieLocaleResolver();</span>
+<span class="nc" id="L85">        cookieLocaleResolver.setDefaultLocale(Locale.ENGLISH);</span>
+<span class="nc" id="L86">        return cookieLocaleResolver;</span>
+    }
+
+    @Bean
+    public EmailValidator usernameValidator() {
+<span class="nc" id="L91">        return new EmailValidator();</span>
+    }
+
+    @Bean
+    public PasswordMatchesValidator passwordMatchesValidator() {
+<span class="nc" id="L96">        return new PasswordMatchesValidator();</span>
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(RequestContextListener.class)
+    public RequestContextListener requestContextListener() {
+<span class="nc" id="L102">        return new RequestContextListener();</span>
+    }
+
+    @Override
+    public Validator getValidator() {
+<span class="nc" id="L107">        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();</span>
+<span class="nc" id="L108">        validator.setValidationMessageSource(messageSource);</span>
+<span class="nc" id="L109">        return validator;</span>
+    }
+
+    @Bean
+    WebServerFactoryCustomizer&lt;ConfigurableServletWebServerFactory&gt; enableDefaultServlet() {
+<span class="nc" id="L114">        return (factory) -&gt; factory.setRegisterDefaultServlet(true);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>

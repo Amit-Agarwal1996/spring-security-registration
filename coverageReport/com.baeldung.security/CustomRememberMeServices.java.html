@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CustomRememberMeServices.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">spring-security-login-and-registration</a> &gt; <a href="index.source.html" class="el_package">com.baeldung.security</a> &gt; <span class="el_source">CustomRememberMeServices.java</span></div><h1>CustomRememberMeServices.java</h1><pre class="source lang-java linenums">package com.baeldung.security;
+
+import java.util.Date;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+import com.baeldung.persistence.dao.UserRepository;
+import com.baeldung.persistence.model.User;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AuthenticationDetailsSource;
+import org.springframework.security.authentication.RememberMeAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper;
+import org.springframework.security.core.authority.mapping.NullAuthoritiesMapper;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.security.web.authentication.rememberme.PersistentRememberMeToken;
+import org.springframework.security.web.authentication.rememberme.PersistentTokenBasedRememberMeServices;
+import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
+
+public class CustomRememberMeServices extends PersistentTokenBasedRememberMeServices {
+
+    @Autowired
+    private UserRepository userRepository;
+
+<span class="nc" id="L28">    private GrantedAuthoritiesMapper authoritiesMapper = new NullAuthoritiesMapper();</span>
+<span class="nc" id="L29">    private AuthenticationDetailsSource&lt;HttpServletRequest, ?&gt; authenticationDetailsSource = new WebAuthenticationDetailsSource();</span>
+    private PersistentTokenRepository tokenRepository;
+    private String key;
+
+    public CustomRememberMeServices(String key, UserDetailsService userDetailsService, PersistentTokenRepository tokenRepository) {
+<span class="nc" id="L34">        super(key, userDetailsService, tokenRepository);</span>
+<span class="nc" id="L35">        this.tokenRepository = tokenRepository;</span>
+<span class="nc" id="L36">        this.key = key;</span>
+<span class="nc" id="L37">    }</span>
+
+    @Override
+    protected void onLoginSuccess(HttpServletRequest request, HttpServletResponse response, Authentication successfulAuthentication) {
+<span class="nc" id="L41">        String username = ((User) successfulAuthentication.getPrincipal()).getEmail();</span>
+<span class="nc" id="L42">        logger.debug(&quot;Creating new persistent login for user &quot; + username);</span>
+<span class="nc" id="L43">        PersistentRememberMeToken persistentToken = new PersistentRememberMeToken(username, generateSeriesData(), generateTokenData(), new Date());</span>
+        try {
+<span class="nc" id="L45">            tokenRepository.createNewToken(persistentToken);</span>
+<span class="nc" id="L46">            addCookie(persistentToken, request, response);</span>
+<span class="nc" id="L47">        } catch (Exception e) {</span>
+<span class="nc" id="L48">            logger.error(&quot;Failed to save persistent token &quot;, e);</span>
+<span class="nc" id="L49">        }</span>
+<span class="nc" id="L50">    }</span>
+
+    @Override
+    protected Authentication createSuccessfulAuthentication(HttpServletRequest request, UserDetails user) {
+<span class="nc" id="L54">        User auser = userRepository.findByEmail(user.getUsername());</span>
+<span class="nc" id="L55">        RememberMeAuthenticationToken auth = new RememberMeAuthenticationToken(key, auser, authoritiesMapper.mapAuthorities(user.getAuthorities()));</span>
+<span class="nc" id="L56">        auth.setDetails(authenticationDetailsSource.buildDetails(request));</span>
+<span class="nc" id="L57">        return auth;</span>
+    }
+
+    private void addCookie(PersistentRememberMeToken token, HttpServletRequest request, HttpServletResponse response) {
+<span class="nc" id="L61">        setCookie(new String[] { token.getSeries(), token.getTokenValue() }, getTokenValiditySeconds(), request, response);</span>
+<span class="nc" id="L62">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>

@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SecSecurityConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">spring-security-login-and-registration</a> &gt; <a href="index.source.html" class="el_package">com.baeldung.spring</a> &gt; <span class="el_source">SecSecurityConfig.java</span></div><h1>SecSecurityConfig.java</h1><pre class="source lang-java linenums">package com.baeldung.spring;
+
+import com.baeldung.persistence.dao.UserRepository;
+import com.baeldung.security.CustomRememberMeServices;
+import com.baeldung.security.google2fa.CustomAuthenticationProvider;
+import com.baeldung.security.google2fa.CustomWebAuthenticationDetailsSource;
+import com.baeldung.security.location.DifferentLocationChecker;
+import com.maxmind.geoip2.DatabaseReader;
+import com.maxmind.geoip2.exception.GeoIp2Exception;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.access.expression.SecurityExpressionHandler;
+import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
+import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.core.session.SessionRegistry;
+import org.springframework.security.core.session.SessionRegistryImpl;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.FilterInvocation;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.expression.DefaultWebSecurityExpressionHandler;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.RememberMeServices;
+import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+import org.springframework.security.web.authentication.rememberme.InMemoryTokenRepositoryImpl;
+import org.springframework.security.web.session.HttpSessionEventPublisher;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+
+import java.io.File;
+import java.io.IOException;
+
+// @ImportResource({ &quot;classpath:webSecurityConfig.xml&quot; })
+@EnableWebSecurity
+@Configuration
+<span class="nc" id="L47">public class SecSecurityConfig {</span>
+
+    @Autowired
+    private UserDetailsService userDetailsService;
+
+    @Autowired
+    private AuthenticationSuccessHandler myAuthenticationSuccessHandler;
+
+    @Autowired
+    private LogoutSuccessHandler myLogoutSuccessHandler;
+
+    @Autowired
+    private AuthenticationFailureHandler authenticationFailureHandler;
+
+    @Autowired
+    private CustomWebAuthenticationDetailsSource authenticationDetailsSource;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Bean
+    public AuthenticationManager authManager(HttpSecurity http) throws Exception {
+<span class="nc" id="L69">        return http.getSharedObject(AuthenticationManagerBuilder.class)</span>
+<span class="nc" id="L70">            .authenticationProvider(authProvider())</span>
+<span class="nc" id="L71">            .build();</span>
+    }
+
+    @Bean
+    public WebSecurityCustomizer webSecurityCustomizer() {
+<span class="nc" id="L76">        return (web) -&gt; web.ignoring()</span>
+<span class="nc" id="L77">            .requestMatchers(new AntPathRequestMatcher(&quot;/resources/**&quot;, &quot;/h2/**&quot;));</span>
+    }
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+<span class="nc" id="L82">        http.csrf(AbstractHttpConfigurer::disable)</span>
+<span class="nc" id="L83">            .securityContext((securityContext) -&gt; securityContext.requireExplicitSave(true))</span>
+<span class="nc" id="L84">            .authorizeHttpRequests(authz -&gt; {</span>
+<span class="nc" id="L85">                authz.requestMatchers(HttpMethod.GET, &quot;/roleHierarchy&quot;)</span>
+<span class="nc" id="L86">                    .hasRole(&quot;STAFF&quot;)</span>
+<span class="nc" id="L87">                    .requestMatchers(&quot;/login*&quot;, &quot;/logout*&quot;, &quot;/signin/**&quot;, &quot;/signup/**&quot;, &quot;/customLogin&quot;, &quot;/user/registration*&quot;, &quot;/registrationConfirm*&quot;, &quot;/expiredAccount*&quot;, &quot;/registration*&quot;, &quot;/badUser*&quot;, &quot;/user/resendRegistrationToken*&quot;, &quot;/forgetPassword*&quot;,</span>
+                        &quot;/user/resetPassword*&quot;, &quot;/user/savePassword*&quot;, &quot;/updatePassword*&quot;, &quot;/user/changePassword*&quot;, &quot;/emailError*&quot;, &quot;/resources/**&quot;, &quot;/old/user/registration*&quot;, &quot;/successRegister*&quot;, &quot;/qrcode*&quot;, &quot;/user/enableNewLoc*&quot;)
+<span class="nc" id="L89">                    .permitAll()</span>
+<span class="nc" id="L90">                    .requestMatchers(&quot;/invalidSession*&quot;)</span>
+<span class="nc" id="L91">                    .anonymous()</span>
+<span class="nc" id="L92">                    .requestMatchers(&quot;/user/updatePassword*&quot;)</span>
+<span class="nc" id="L93">                    .hasAuthority(&quot;CHANGE_PASSWORD_PRIVILEGE&quot;)</span>
+<span class="nc" id="L94">                    .requestMatchers(&quot;/console&quot;)</span>
+<span class="nc" id="L95">                    .hasAuthority(&quot;READ_PRIVILEGE&quot;)</span>
+<span class="nc" id="L96">                    .anyRequest()</span>
+<span class="nc" id="L97">                    .hasAuthority(&quot;READ_PRIVILEGE&quot;);</span>
+<span class="nc" id="L98">            })</span>
+<span class="nc" id="L99">            .formLogin((formLogin) -&gt; formLogin.loginPage(&quot;/login&quot;)</span>
+<span class="nc" id="L100">                .defaultSuccessUrl(&quot;/homepage.html&quot;)</span>
+<span class="nc" id="L101">                .failureUrl(&quot;/login?error=true&quot;)</span>
+<span class="nc" id="L102">                .successHandler(myAuthenticationSuccessHandler)</span>
+<span class="nc" id="L103">                .failureHandler(authenticationFailureHandler)</span>
+<span class="nc" id="L104">                .authenticationDetailsSource(authenticationDetailsSource)</span>
+<span class="nc" id="L105">                .permitAll())</span>
+<span class="nc" id="L106">            .sessionManagement((sessionManagement) -&gt; sessionManagement.invalidSessionUrl(&quot;/invalidSession.html&quot;)</span>
+<span class="nc" id="L107">                .maximumSessions(1)</span>
+<span class="nc" id="L108">                .sessionRegistry(sessionRegistry()))</span>
+<span class="nc" id="L109">            .logout((logout) -&gt; logout.logoutSuccessHandler(myLogoutSuccessHandler)</span>
+<span class="nc" id="L110">                .invalidateHttpSession(true)</span>
+<span class="nc" id="L111">                .logoutSuccessUrl(&quot;/logout.html?logSucc=true&quot;)</span>
+<span class="nc" id="L112">                .deleteCookies(&quot;JSESSIONID&quot;)</span>
+<span class="nc" id="L113">                .permitAll())</span>
+<span class="nc" id="L114">            .rememberMe((remember) -&gt; remember.rememberMeServices(rememberMeServices()));</span>
+
+<span class="nc" id="L116">        return http.build();</span>
+    }
+
+    // beans
+    @Bean
+    public SecurityExpressionHandler&lt;FilterInvocation&gt; customWebSecurityExpressionHandler() {
+<span class="nc" id="L122">        DefaultWebSecurityExpressionHandler expressionHandler = new DefaultWebSecurityExpressionHandler();</span>
+<span class="nc" id="L123">        expressionHandler.setRoleHierarchy(roleHierarchy());</span>
+<span class="nc" id="L124">        return expressionHandler;</span>
+    }
+
+    @Bean
+    public DaoAuthenticationProvider authProvider() {
+<span class="nc" id="L129">        final CustomAuthenticationProvider authProvider = new CustomAuthenticationProvider();</span>
+<span class="nc" id="L130">        authProvider.setUserDetailsService(userDetailsService);</span>
+<span class="nc" id="L131">        authProvider.setPasswordEncoder(passwordEncoder());</span>
+<span class="nc" id="L132">        authProvider.setPostAuthenticationChecks(differentLocationChecker());</span>
+<span class="nc" id="L133">        return authProvider;</span>
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+<span class="nc" id="L138">        return new BCryptPasswordEncoder(11);</span>
+    }
+
+    @Bean
+    public SessionRegistry sessionRegistry() {
+<span class="nc" id="L143">        return new SessionRegistryImpl();</span>
+    }
+
+    @Bean
+    public RememberMeServices rememberMeServices() {
+<span class="nc" id="L148">        CustomRememberMeServices rememberMeServices = new CustomRememberMeServices(&quot;theKey&quot;, userDetailsService, new InMemoryTokenRepositoryImpl());</span>
+<span class="nc" id="L149">        return rememberMeServices;</span>
+    }
+
+    @Bean(name = &quot;GeoIPCountry&quot;)
+    public DatabaseReader databaseReader() throws IOException, GeoIp2Exception {
+<span class="nc" id="L154">        final File resource = new File(this.getClass()</span>
+<span class="nc" id="L155">            .getClassLoader()</span>
+<span class="nc" id="L156">            .getResource(&quot;maxmind/GeoLite2-Country.mmdb&quot;)</span>
+<span class="nc" id="L157">            .getFile());</span>
+<span class="nc" id="L158">        return new DatabaseReader.Builder(resource).build();</span>
+    }
+
+    @Bean
+    public RoleHierarchy roleHierarchy() {
+<span class="nc" id="L163">        RoleHierarchyImpl roleHierarchy = new RoleHierarchyImpl();</span>
+<span class="nc" id="L164">        String hierarchy = &quot;ROLE_ADMIN &gt; ROLE_STAFF \n ROLE_STAFF &gt; ROLE_USER&quot;;</span>
+<span class="nc" id="L165">        roleHierarchy.setHierarchy(hierarchy);</span>
+<span class="nc" id="L166">        return roleHierarchy;</span>
+    }
+
+    @Bean
+    public HttpSessionEventPublisher httpSessionEventPublisher() {
+<span class="nc" id="L171">        return new HttpSessionEventPublisher();</span>
+    }
+
+    @Bean
+    public DifferentLocationChecker differentLocationChecker() {
+<span class="nc" id="L176">        return new DifferentLocationChecker();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>
