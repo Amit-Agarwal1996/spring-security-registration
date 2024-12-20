@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NewLocationToken.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">spring-security-login-and-registration</a> &gt; <a href="index.source.html" class="el_package">com.baeldung.persistence.model</a> &gt; <span class="el_source">NewLocationToken.java</span></div><h1>NewLocationToken.java</h1><pre class="source lang-java linenums">package com.baeldung.persistence.model;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
+
+@Entity
+public class NewLocationToken {
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private Long id;
+
+    private String token;
+
+    @OneToOne(targetEntity = UserLocation.class, fetch = FetchType.EAGER)
+    @JoinColumn(nullable = false, name = &quot;user_location_id&quot;)
+    private UserLocation userLocation;
+
+    //
+
+    public NewLocationToken() {
+<span class="nc" id="L26">        super();</span>
+<span class="nc" id="L27">    }</span>
+
+    public NewLocationToken(final String token) {
+<span class="nc" id="L30">        super();</span>
+<span class="nc" id="L31">        this.token = token;</span>
+<span class="nc" id="L32">    }</span>
+
+    public NewLocationToken(final String token, final UserLocation userLocation) {
+<span class="nc" id="L35">        super();</span>
+<span class="nc" id="L36">        this.token = token;</span>
+<span class="nc" id="L37">        this.userLocation = userLocation;</span>
+<span class="nc" id="L38">    }</span>
+
+    //
+
+    public Long getId() {
+<span class="nc" id="L43">        return id;</span>
+    }
+
+    public void setId(Long id) {
+<span class="nc" id="L47">        this.id = id;</span>
+<span class="nc" id="L48">    }</span>
+
+    public String getToken() {
+<span class="nc" id="L51">        return token;</span>
+    }
+
+    public void setToken(String token) {
+<span class="nc" id="L55">        this.token = token;</span>
+<span class="nc" id="L56">    }</span>
+
+    public UserLocation getUserLocation() {
+<span class="nc" id="L59">        return userLocation;</span>
+    }
+
+    public void setUserLocation(UserLocation userLocation) {
+<span class="nc" id="L63">        this.userLocation = userLocation;</span>
+<span class="nc" id="L64">    }</span>
+
+    @Override
+    public int hashCode() {
+<span class="nc" id="L68">        final int prime = 31;</span>
+<span class="nc" id="L69">        int result = 1;</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">        result = (prime * result) + ((getId() == null) ? 0 : getId().hashCode());</span>
+<span class="nc bnc" id="L71" title="All 2 branches missed.">        result = (prime * result) + ((getToken() == null) ? 0 : getToken().hashCode());</span>
+<span class="nc bnc" id="L72" title="All 2 branches missed.">        result = (prime * result) + ((getUserLocation() == null) ? 0 : getUserLocation().hashCode());</span>
+<span class="nc" id="L73">        return result;</span>
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+<span class="nc bnc" id="L78" title="All 2 branches missed.">        if (this == obj) {</span>
+<span class="nc" id="L79">            return true;</span>
+        }
+<span class="nc bnc" id="L81" title="All 2 branches missed.">        if (obj == null) {</span>
+<span class="nc" id="L82">            return false;</span>
+        }
+<span class="nc bnc" id="L84" title="All 2 branches missed.">        if (getClass() != obj.getClass()) {</span>
+<span class="nc" id="L85">            return false;</span>
+        }
+<span class="nc" id="L87">        final NewLocationToken other = (NewLocationToken) obj;</span>
+<span class="nc bnc" id="L88" title="All 2 branches missed.">        if (getId() == null) {</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">            if (other.getId() != null) {</span>
+<span class="nc" id="L90">                return false;</span>
+            }
+<span class="nc bnc" id="L92" title="All 2 branches missed.">        } else if (!getId().equals(other.getId())) {</span>
+<span class="nc" id="L93">            return false;</span>
+        }
+<span class="nc bnc" id="L95" title="All 2 branches missed.">        if (getToken() == null) {</span>
+<span class="nc bnc" id="L96" title="All 2 branches missed.">            if (other.getToken() != null) {</span>
+<span class="nc" id="L97">                return false;</span>
+            }
+<span class="nc bnc" id="L99" title="All 2 branches missed.">        } else if (!getToken().equals(other.getToken())) {</span>
+<span class="nc" id="L100">            return false;</span>
+        }
+<span class="nc bnc" id="L102" title="All 2 branches missed.">        if (getUserLocation() == null) {</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">            if (other.getUserLocation() != null) {</span>
+<span class="nc" id="L104">                return false;</span>
+            }
+<span class="nc bnc" id="L106" title="All 2 branches missed.">        } else if (!getUserLocation().equals(other.getUserLocation())) {</span>
+<span class="nc" id="L107">            return false;</span>
+        }
+<span class="nc" id="L109">        return true;</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="nc" id="L114">        return &quot;NewLocationToken [id=&quot; + id + &quot;, token=&quot; + token + &quot;, userLocation=&quot; + userLocation + &quot;]&quot;;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>
